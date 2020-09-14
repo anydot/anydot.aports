@@ -2,8 +2,8 @@ name: build packages
 
 on:
   push:
-    branches:
-      - master
+    tags:
+      - 'v*'
 
 jobs:
   build:
@@ -15,8 +15,26 @@ jobs:
       - name: Build packages
         run: ./build.sh
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v2
+      - name: Tar release
+        run: tar cf packages.tar -C packages/src/x86_64/ .
+
+      - name: Create release
+        uses: actions/create-release@v1
+        id: create_release
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: packages
-          path: packages/src/x86_64/*
+            tag_name: ${{ github.ref }}
+            release_name: Release ${{ github.ref }}
+            draft: false
+            prerelease: false
+
+      - name: Upload release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: packages.tar
+          asset_name: packages
+          asset_content_type: application/x-tar
